@@ -1,0 +1,124 @@
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local GUNS = {
+"Minigun", "M249", "AK-47", "AR-15", 
+"CZ-10", "BLOCK-19", "UZI"
+}
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "VaultHelper"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(220, 180)
+frame.Position = UDim2.new(0.5, -110, 0.15, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local codeLabel = Instance.new("TextLabel")
+codeLabel.Size = UDim2.new(1, -10, 0, 30)
+codeLabel.Position = UDim2.fromOffset(5, 5)
+codeLabel.BackgroundTransparency = 1
+codeLabel.TextColor3 = Color3.new(1, 1, 1)
+codeLabel.TextSize = 16
+codeLabel.Font = Enum.Font.GothamBold
+codeLabel.Text = "Code: Loading..."
+codeLabel.Parent = frame
+
+local debugLabel = Instance.new("TextLabel")
+debugLabel.Size = UDim2.new(1, -10, 0, 15)
+debugLabel.Position = UDim2.fromOffset(5, 38)
+debugLabel.BackgroundTransparency = 1
+debugLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+debugLabel.TextSize = 10
+debugLabel.Font = Enum.Font.Gotham
+debugLabel.Text = "Map: --"
+debugLabel.Parent = frame
+
+local aimbotBtn = Instance.new("TextButton")
+aimbotBtn.Size = UDim2.fromOffset(180, 35)
+aimbotBtn.Position = UDim2.new(0.5, -90, 0, 65)
+aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+aimbotBtn.TextColor3 = Color3.new(1, 1, 1)
+aimbotBtn.TextSize = 16
+aimbotBtn.Font = Enum.Font.GothamBold
+aimbotBtn.Text = "Aimbot: OFF"
+aimbotBtn.Parent = frame
+
+local espBtn = Instance.new("TextButton")
+espBtn.Size = UDim2.fromOffset(180, 35)
+espBtn.Position = UDim2.new(0.5, -90, 0, 110)
+espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+espBtn.TextColor3 = Color3.new(1, 1, 1)
+espBtn.TextSize = 16
+espBtn.Font = Enum.Font.GothamBold
+espBtn.Text = "ESP: OFF"
+espBtn.Parent = frame
+
+local aimbotActive = false
+local espActive = false
+local espBoxes = {}
+
+local function getVaultCode()
+local map = workspace:FindFirstChild("Map")
+if not map then 
+return "No Map" 
+end
+
+end
+
+local function hasGun(plr)
+if not plr then 
+return false 
+end
+
+end
+
+local function updateESP()
+local allPlayers = Players:GetPlayers()
+
+end
+
+local function shooterAimbot()
+local char = player.Character
+if not char then 
+return 
+end
+
+end
+
+aimbotBtn.MouseButton1Click:Connect(function()
+aimbotActive = not aimbotActive
+if aimbotActive then
+aimbotBtn.Text = "Aimbot: ON"
+aimbotBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
+else
+aimbotBtn.Text = "Aimbot: OFF"
+aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+end
+end)
+
+espBtn.MouseButton1Click:Connect(function()
+espActive = not espActive
+if espActive then
+espBtn.Text = "ESP: ON"
+espBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
+else
+espBtn.Text = "ESP: OFF"
+espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+end
+end)
+
+task.spawn(function()
+while gui.Parent do
+local code = getVaultCode()
+codeLabel.Text = "Code: " .. code
+
+end)
