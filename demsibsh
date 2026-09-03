@@ -8,7 +8,6 @@ local GUNS = {
 }
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "VaultHelper"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
@@ -67,52 +66,27 @@ local espBoxes = {}
 
 local function getVaultCode()
     local map = workspace:FindFirstChild("Map")
-    if not map then 
-        return "No Map" 
-    end
-
+    if not map then return "No Map" end
     local currentMap = map:FindFirstChild("CurrentMap")
-    if not currentMap then 
-        return "No CurrentMap" 
-    end
-
-    local area = currentMap:FindFirstChild("Office") 
-    if not area then
-        area = currentMap:FindFirstChild("Mansion")
-    end
-    if not area then 
-        return "No Office/Mansion" 
-    end
-
-    local vault = area:FindFirstChild("VaultPuzzle")
-    if not vault then 
-        return "No VaultPuzzle" 
-    end
-
+    if not currentMap then return "No CurrentMap" end
+    local mansion = currentMap:FindFirstChild("Mansion")
+    if not mansion then return "No Mansion" end
+    local vault = mansion:FindFirstChild("VaultPuzzle")
+    if not vault then return "No VaultPuzzle" end
     local code = vault:FindFirstChild("CurrentCode")
-    if not code then 
-        return "No CurrentCode" 
-    end
-
+    if not code then return "No CurrentCode" end
     return tostring(code.Value or code)
 end
 
 local function hasGun(plr)
-    if not plr then 
-        return false 
-    end
-
+    if not plr then return false end
     local backpack = plr:FindFirstChild("Backpack")
     local character = plr.Character
-    
     if backpack then
-        for i = 1, #backpack:GetChildren() do
-            local child = backpack:GetChildren()[i]
+        for _, child in ipairs(backpack:GetChildren()) do
             if child:IsA("Tool") then
                 for _, gunName in ipairs(GUNS) do
-                    if child.Name == gunName then 
-                        return true 
-                    end
+                    if child.Name == gunName then return true end
                 end
                 if child:FindFirstChild("GunData") or child:FindFirstChild("GunSystem") then
                     return true
@@ -120,15 +94,11 @@ local function hasGun(plr)
             end
         end
     end
-    
     if character then
-        for i = 1, #character:GetChildren() do
-            local child = character:GetChildren()[i]
+        for _, child in ipairs(character:GetChildren()) do
             if child:IsA("Tool") then
                 for _, gunName in ipairs(GUNS) do
-                    if child.Name == gunName then 
-                        return true 
-                    end
+                    if child.Name == gunName then return true end
                 end
                 if child:FindFirstChild("GunData") or child:FindFirstChild("GunSystem") then
                     return true
@@ -136,39 +106,25 @@ local function hasGun(plr)
             end
         end
     end
-    
     return false
 end
 
 local function updateESP()
-    local allPlayers = Players:GetPlayers()
-    
-    for i = 1, #allPlayers do
-        local other = allPlayers[i]
-        if other == player then 
-            goto continue 
-        end
-
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other == player then continue end
         local char = other.Character
         if not char then
             local box = espBoxes[other]
-            if box then 
-                box.Visible = false 
-            end
-            goto continue
+            if box then box.Visible = false end
+            continue
         end
-
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then
             local box = espBoxes[other]
-            if box then 
-                box.Visible = false 
-            end
-            goto continue
+            if box then box.Visible = false end
+            continue
         end
-
         local armed = hasGun(other)
-
         local box = espBoxes[other]
         if not box then
             box = Instance.new("BoxHandleAdornment")
@@ -180,9 +136,7 @@ local function updateESP()
             box.Parent = gui
             espBoxes[other] = box
         end
-
         box.Adornee = root
-
         if espActive then
             box.Visible = true
             if armed then
@@ -193,81 +147,40 @@ local function updateESP()
         else
             box.Visible = false
         end
-        
-        ::continue::
     end
-
-    local toRemove = {}
     for plrKey, box in pairs(espBoxes) do
         if not plrKey.Parent then
-            table.insert(toRemove, plrKey)
-        end
-    end
-    
-    for _, key in ipairs(toRemove) do
-        local box = espBoxes[key]
-        if box then
             box:Destroy()
-            espBoxes[key] = nil
+            espBoxes[plrKey] = nil
         end
     end
 end
 
 local function shooterAimbot()
     local char = player.Character
-    if not char then 
-        return 
-    end
-    
+    if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then 
-        return 
-    end
-
+    if not root then return end
     local camera = workspace.CurrentCamera
     local cameraPos = camera.CFrame.Position
-
     local target = nil
-    local closest = 99999
-
-    local allPlayers = Players:GetPlayers()
-    
-    for i = 1, #allPlayers do
-        local other = allPlayers[i]
-        if other == player then 
-            continue 
-        end
-        
-        if not other.Character then 
-            continue 
-        end
-        
-        if not hasGun(other) then 
-            continue 
-        end
-
+    local closest = math.huge
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other == player then continue end
+        if not other.Character then continue end
+        if not hasGun(other) then continue end
         local targetRoot = other.Character:FindFirstChild("HumanoidRootPart")
-        if not targetRoot then 
-            continue 
-        end
-
+        if not targetRoot then continue end
         local dist = (targetRoot.Position - root.Position).Magnitude
         if dist < closest then
             closest = dist
             target = targetRoot
         end
     end
-
-    if not target then 
-        return 
-    end
-
+    if not target then return end
     local targetPos = target.Position
     local head = target.Parent:FindFirstChild("Head")
-    if head then 
-        targetPos = head.Position 
-    end
-
+    if head then targetPos = head.Position end
     camera.CFrame = CFrame.new(cameraPos, targetPos)
 end
 
@@ -297,7 +210,6 @@ task.spawn(function()
     while gui.Parent do
         local code = getVaultCode()
         codeLabel.Text = "Code: " .. code
-
         local map = workspace:FindFirstChild("Map")
         local currentMap = map and map:FindFirstChild("CurrentMap")
         if currentMap then
@@ -305,100 +217,10 @@ task.spawn(function()
         else
             debugLabel.Text = "Map: none"
         end
-
         if aimbotActive then
             pcall(shooterAimbot)
         end
-
         pcall(updateESP)
-
         wait(0.05)
     end
-end)debugLabel.Position = UDim2.fromOffset(5, 38)
-debugLabel.BackgroundTransparency = 1
-debugLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
-debugLabel.TextSize = 10
-debugLabel.Font = Enum.Font.Gotham
-debugLabel.Text = "Map: --"
-debugLabel.Parent = frame
-
-local aimbotBtn = Instance.new("TextButton")
-aimbotBtn.Size = UDim2.fromOffset(180, 35)
-aimbotBtn.Position = UDim2.new(0.5, -90, 0, 65)
-aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-aimbotBtn.TextColor3 = Color3.new(1, 1, 1)
-aimbotBtn.TextSize = 16
-aimbotBtn.Font = Enum.Font.GothamBold
-aimbotBtn.Text = "Aimbot: OFF"
-aimbotBtn.Parent = frame
-
-local espBtn = Instance.new("TextButton")
-espBtn.Size = UDim2.fromOffset(180, 35)
-espBtn.Position = UDim2.new(0.5, -90, 0, 110)
-espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-espBtn.TextColor3 = Color3.new(1, 1, 1)
-espBtn.TextSize = 16
-espBtn.Font = Enum.Font.GothamBold
-espBtn.Text = "ESP: OFF"
-espBtn.Parent = frame
-
-local aimbotActive = false
-local espActive = false
-local espBoxes = {}
-
-local function getVaultCode()
-local map = workspace:FindFirstChild("Map")
-if not map then 
-return "No Map" 
-end
-
-end
-
-local function hasGun(plr)
-if not plr then 
-return false 
-end
-
-end
-
-local function updateESP()
-local allPlayers = Players:GetPlayers()
-
-end
-
-local function shooterAimbot()
-local char = player.Character
-if not char then 
-return 
-end
-
-end
-
-aimbotBtn.MouseButton1Click:Connect(function()
-aimbotActive = not aimbotActive
-if aimbotActive then
-aimbotBtn.Text = "Aimbot: ON"
-aimbotBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
-else
-aimbotBtn.Text = "Aimbot: OFF"
-aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-end
-end)
-
-espBtn.MouseButton1Click:Connect(function()
-espActive = not espActive
-if espActive then
-espBtn.Text = "ESP: ON"
-espBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
-else
-espBtn.Text = "ESP: OFF"
-espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-end
-end)
-
-task.spawn(function()
-while gui.Parent do
-local code = getVaultCode()
-codeLabel.Text = "Code: " .. code
-
 end)
