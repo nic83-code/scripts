@@ -1,226 +1,322 @@
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
-local GUNS = {
-    "Minigun", "M249", "AK-47", "AR-15", 
-    "CZ-10", "BLOCK-19", "UZI"
-}
-
-local gui = Instance.new("ScreenGui")
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.fromOffset(220, 180)
-frame.Position = UDim2.new(0.5, -110, 0.15, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
-frame.Parent = gui
-
-local codeLabel = Instance.new("TextLabel")
-codeLabel.Size = UDim2.new(1, -10, 0, 30)
-codeLabel.Position = UDim2.fromOffset(5, 5)
-codeLabel.BackgroundTransparency = 1
-codeLabel.TextColor3 = Color3.new(1, 1, 1)
-codeLabel.TextSize = 16
-codeLabel.Font = Enum.Font.GothamBold
-codeLabel.Text = "Code: Loading..."
-codeLabel.Parent = frame
-
-local debugLabel = Instance.new("TextLabel")
-debugLabel.Size = UDim2.new(1, -10, 0, 15)
-debugLabel.Position = UDim2.fromOffset(5, 38)
-debugLabel.BackgroundTransparency = 1
-debugLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
-debugLabel.TextSize = 10
-debugLabel.Font = Enum.Font.Gotham
-debugLabel.Text = "Map: --"
-debugLabel.Parent = frame
-
-local aimbotBtn = Instance.new("TextButton")
-aimbotBtn.Size = UDim2.fromOffset(180, 35)
-aimbotBtn.Position = UDim2.new(0.5, -90, 0, 65)
-aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-aimbotBtn.TextColor3 = Color3.new(1, 1, 1)
-aimbotBtn.TextSize = 16
-aimbotBtn.Font = Enum.Font.GothamBold
-aimbotBtn.Text = "Aimbot: OFF"
-aimbotBtn.Parent = frame
-
-local espBtn = Instance.new("TextButton")
-espBtn.Size = UDim2.fromOffset(180, 35)
-espBtn.Position = UDim2.new(0.5, -90, 0, 110)
-espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-espBtn.TextColor3 = Color3.new(1, 1, 1)
-espBtn.TextSize = 16
-espBtn.Font = Enum.Font.GothamBold
-espBtn.Text = "ESP: OFF"
-espBtn.Parent = frame
-
-local aimbotActive = false
-local espActive = false
-local espBoxes = {}
-
-local function getVaultCode()
-    local map = workspace:FindFirstChild("Map")
-    if not map then return "No Map" end
-    local currentMap = map:FindFirstChild("CurrentMap")
-    if not currentMap then return "No CurrentMap" end
-    local mansion = currentMap:FindFirstChild("Mansion")
-    if not mansion then return "No Mansion" end
-    local vault = mansion:FindFirstChild("VaultPuzzle")
-    if not vault then return "No VaultPuzzle" end
-    local code = vault:FindFirstChild("CurrentCode")
-    if not code then return "No CurrentCode" end
-    return tostring(code.Value or code)
-end
-
-local function hasGun(plr)
-    if not plr then return false end
-    local backpack = plr:FindFirstChild("Backpack")
-    local character = plr.Character
-    if backpack then
-        for _, child in ipairs(backpack:GetChildren()) do
-            if child:IsA("Tool") then
-                for _, gunName in ipairs(GUNS) do
-                    if child.Name == gunName then return true end
-                end
-                if child:FindFirstChild("GunData") or child:FindFirstChild("GunSystem") then
-                    return true
-                end
-            end
-        end
-    end
-    if character then
-        for _, child in ipairs(character:GetChildren()) do
-            if child:IsA("Tool") then
-                for _, gunName in ipairs(GUNS) do
-                    if child.Name == gunName then return true end
-                end
-                if child:FindFirstChild("GunData") or child:FindFirstChild("GunSystem") then
-                    return true
-                end
-            end
-        end
-    end
-    return false
-end
-
-local function updateESP()
-    for _, other in ipairs(Players:GetPlayers()) do
-        if other == player then continue end
-        local char = other.Character
-        if not char then
-            local box = espBoxes[other]
-            if box then box.Visible = false end
-            continue
-        end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then
-            local box = espBoxes[other]
-            if box then box.Visible = false end
-            continue
-        end
-        local armed = hasGun(other)
-        local box = espBoxes[other]
-        if not box then
-            box = Instance.new("BoxHandleAdornment")
-            box.Size = Vector3.new(3, 5, 1.5)
-            box.Transparency = 0.3
-            box.Adornee = root
-            box.ZIndex = 5
-            box.AlwaysOnTop = true
-            box.Parent = gui
-            espBoxes[other] = box
-        end
-        box.Adornee = root
-        if espActive then
-            box.Visible = true
-            if armed then
-                box.Color3 = Color3.new(1, 0, 0)
-            else
-                box.Color3 = Color3.new(0, 1, 0)
-            end
-        else
-            box.Visible = false
-        end
-    end
-    for plrKey, box in pairs(espBoxes) do
-        if not plrKey.Parent then
-            box:Destroy()
-            espBoxes[plrKey] = nil
-        end
-    end
-end
-
-local function shooterAimbot()
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    local camera = workspace.CurrentCamera
-    local cameraPos = camera.CFrame.Position
-    local target = nil
-    local closest = math.huge
-    for _, other in ipairs(Players:GetPlayers()) do
-        if other == player then continue end
-        if not other.Character then continue end
-        if not hasGun(other) then continue end
-        local targetRoot = other.Character:FindFirstChild("HumanoidRootPart")
-        if not targetRoot then continue end
-        local dist = (targetRoot.Position - root.Position).Magnitude
-        if dist < closest then
-            closest = dist
-            target = targetRoot
-        end
-    end
-    if not target then return end
-    local targetPos = target.Position
-    local head = target.Parent:FindFirstChild("Head")
-    if head then targetPos = head.Position end
-    camera.CFrame = CFrame.new(cameraPos, targetPos)
-end
-
-aimbotBtn.MouseButton1Click:Connect(function()
-    aimbotActive = not aimbotActive
-    if aimbotActive then
-        aimbotBtn.Text = "Aimbot: ON"
-        aimbotBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
-    else
-        aimbotBtn.Text = "Aimbot: OFF"
-        aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    end
-end)
-
-espBtn.MouseButton1Click:Connect(function()
-    espActive = not espActive
-    if espActive then
-        espBtn.Text = "ESP: ON"
-        espBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
-    else
-        espBtn.Text = "ESP: OFF"
-        espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    end
-end)
-
-task.spawn(function()
-    while gui.Parent do
-        local code = getVaultCode()
-        codeLabel.Text = "Code: " .. code
-        local map = workspace:FindFirstChild("Map")
-        local currentMap = map and map:FindFirstChild("CurrentMap")
-        if currentMap then
-            debugLabel.Text = "Map: " .. currentMap.Name
-        else
-            debugLabel.Text = "Map: none"
-        end
-        if aimbotActive then
-            pcall(shooterAimbot)
-        end
-        pcall(updateESP)
-        wait(0.05)
-    end
-end)
+‎local Players = game:GetService("Players")
+‎local player = Players.LocalPlayer
+‎local playerGui = player:WaitForChild("PlayerGui")
+‎
+‎local GUNS = {
+‎    "Minigun", "M249", "AK-47", "AR-15",
+‎    "CZ-10", "BLOCK-19", "UZI"
+‎}
+‎
+‎local gui = Instance.new("ScreenGui")
+‎gui.ResetOnSpawn = false
+‎gui.Parent = playerGui
+‎
+‎local frame = Instance.new("Frame")
+‎frame.Size = UDim2.fromOffset(220, 220)
+‎frame.Position = UDim2.new(0.5, -110, 0.15, 0)
+‎frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+‎frame.BorderSizePixel = 0
+‎frame.Active = true
+‎frame.Draggable = true
+‎frame.Parent = gui
+‎
+‎local codeLabel = Instance.new("TextLabel")
+‎codeLabel.Size = UDim2.new(1, -10, 0, 30)
+‎codeLabel.Position = UDim2.fromOffset(5, 5)
+‎codeLabel.BackgroundTransparency = 1
+‎codeLabel.TextColor3 = Color3.new(1, 1, 1)
+‎codeLabel.TextSize = 16
+‎codeLabel.Font = Enum.Font.GothamBold
+‎codeLabel.Text = "Code: Loading..."
+‎codeLabel.Parent = frame
+‎
+‎local debugLabel = Instance.new("TextLabel")
+‎debugLabel.Size = UDim2.new(1, -10, 0, 15)
+‎debugLabel.Position = UDim2.fromOffset(5, 38)
+‎debugLabel.BackgroundTransparency = 1
+‎debugLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+‎debugLabel.TextSize = 10
+‎debugLabel.Font = Enum.Font.Gotham
+‎debugLabel.Text = "Map: --"
+‎debugLabel.Parent = frame
+‎
+‎local aimbotBtn = Instance.new("TextButton")
+‎aimbotBtn.Size = UDim2.fromOffset(180, 30)
+‎aimbotBtn.Position = UDim2.new(0.5, -90, 0, 60)
+‎aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+‎aimbotBtn.TextColor3 = Color3.new(1, 1, 1)
+‎aimbotBtn.TextSize = 14
+‎aimbotBtn.Font = Enum.Font.GothamBold
+‎aimbotBtn.Text = "Aimbot: OFF"
+‎aimbotBtn.Parent = frame
+‎
+‎local espBtn = Instance.new("TextButton")
+‎espBtn.Size = UDim2.fromOffset(180, 30)
+‎espBtn.Position = UDim2.new(0.5, -90, 0, 98)
+‎espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+‎espBtn.TextColor3 = Color3.new(1, 1, 1)
+‎espBtn.TextSize = 14
+‎espBtn.Font = Enum.Font.GothamBold
+‎espBtn.Text = "ESP: OFF"
+‎espBtn.Parent = frame
+‎
+‎local safeBtn = Instance.new("TextButton")
+‎safeBtn.Size = UDim2.fromOffset(180, 30)
+‎safeBtn.Position = UDim2.new(0.5, -90, 0, 136)
+‎safeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+‎safeBtn.TextColor3 = Color3.new(1, 1, 1)
+‎safeBtn.TextSize = 14
+‎safeBtn.Font = Enum.Font.GothamBold
+‎safeBtn.Text = "Safe Spots"
+‎safeBtn.Parent = frame
+‎
+‎local aimbotActive = false
+‎local espActive = false
+‎local espBoxes = {}
+‎
+‎local safeFrame = Instance.new("Frame")
+‎safeFrame.Size = UDim2.fromOffset(200, 250)
+‎safeFrame.Position = UDim2.new(0.5, -100, 0.45, 0)
+‎safeFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+‎safeFrame.BorderSizePixel = 0
+‎safeFrame.Active = true
+‎safeFrame.Draggable = true
+‎safeFrame.Visible = false
+‎safeFrame.Parent = gui
+‎
+‎local safeTitle = Instance.new("TextLabel")
+‎safeTitle.Size = UDim2.new(1, -10, 0, 25)
+‎safeTitle.Position = UDim2.fromOffset(5, 5)
+‎safeTitle.BackgroundTransparency = 1
+‎safeTitle.TextColor3 = Color3.new(1, 1, 1)
+‎safeTitle.TextSize = 16
+‎safeTitle.Font = Enum.Font.GothamBold
+‎safeTitle.Text = "Safe Spots"
+‎safeTitle.Parent = safeFrame
+‎
+‎local closeBtn = Instance.new("TextButton")
+‎closeBtn.Size = UDim2.fromOffset(30, 25)
+‎closeBtn.Position = UDim2.new(1, -35, 0, 5)
+‎closeBtn.BackgroundColor3 = Color3.fromRGB(60, 10, 10)
+‎closeBtn.TextColor3 = Color3.new(1, 1, 1)
+‎closeBtn.TextSize = 14
+‎closeBtn.Font = Enum.Font.GothamBold
+‎closeBtn.Text = "X"
+‎closeBtn.Parent = safeFrame
+‎
+‎local scroll = Instance.new("ScrollingFrame")
+‎scroll.Size = UDim2.new(1, -10, 1, -50)
+‎scroll.Position = UDim2.fromOffset(5, 35)
+‎scroll.BackgroundTransparency = 1
+‎scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+‎scroll.ScrollBarThickness = 4
+‎scroll.Parent = safeFrame
+‎
+‎local safeList = {
+‎    {name = "tree(mansion only)", pos = Vector3.new(-328, 33, -1512)},
+‎    {name = "Lab", pos = Vector3.new(-4, 57, -52)},
+‎}
+‎
+‎local function createSafeButton(data, index)
+‎    local btn = Instance.new("TextButton")
+‎    btn.Size = UDim2.new(1, -10, 0, 30)
+‎    btn.Position = UDim2.new(0, 5, 0, (index-1)35)
+‎    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+‎    btn.TextColor3 = Color3.new(1, 1, 1)
+‎    btn.TextSize = 14
+‎    btn.Font = Enum.Font.Gotham
+‎    btn.Text = data.name .. " (" .. tostring(data.pos.X) .. ", " .. tostring(data.pos.Y) .. ", " .. tostring(data.pos.Z) .. ")"
+‎    btn.Parent = scroll
+‎    btn.MouseButton1Click:Connect(function()
+‎        local char = player.Character
+‎        if char then
+‎            local root = char:FindFirstChild("HumanoidRootPart")
+‎            if root then
+‎                root.CFrame = CFrame.new(data.pos)
+‎            end
+‎        end
+‎    end)
+‎    return btn
+‎end
+‎
+‎for i, spot in ipairs(safeList) do
+‎    createSafeButton(spot, i)
+‎end
+‎
+‎-- update canvas size
+‎task.spawn(function()
+‎    while safeFrame.Parent do
+‎        local count = #safeList
+‎        scroll.CanvasSize = UDim2.new(0, 0, 0, count  35 + 10)
+‎        task.wait(1)
+‎    end
+‎end)
+‎
+‎closeBtn.MouseButton1Click:Connect(function()
+‎    safeFrame.Visible = false
+‎end)
+‎
+‎safeBtn.MouseButton1Click:Connect(function()
+‎    safeFrame.Visible = not safeFrame.Visible
+‎end)
+‎
+‎local function getVaultCode()
+‎    local map = workspace:FindFirstChild("Map")
+‎    if not map then return "No Map" end
+‎    local currentMap = map:FindFirstChild("CurrentMap")
+‎    if not currentMap then return "No CurrentMap" end
+‎    local mansion = currentMap:FindFirstChild("Mansion")
+‎    if not mansion then return "No Mansion" end
+‎    local vault = mansion:FindFirstChild("VaultPuzzle")
+‎    if not vault then return "No VaultPuzzle" end
+‎    local code = vault:FindFirstChild("CurrentCode")
+‎    if not code then return "No CurrentCode" end
+‎    return tostring(code.Value or code)
+‎end
+‎
+‎local function hasGun(plr)
+‎    if not plr then return false end
+‎    local backpack = plr:FindFirstChild("Backpack")
+‎    local character = plr.Character
+‎    if backpack then
+‎        for _, child in ipairs(backpack:GetChildren()) do
+‎            if child:IsA("Tool") then
+‎                for _, gunName in ipairs(GUNS) do
+‎                    if child.Name == gunName then return true end
+‎                end
+‎                if child:FindFirstChild("GunData") or child:FindFirstChild("GunSystem") then
+‎                    return true
+‎                end
+‎            end
+‎        end
+‎    end
+‎    if character then
+‎        for _, child in ipairs(character:GetChildren()) do
+‎            if child:IsA("Tool") then
+‎                for _, gunName in ipairs(GUNS) do
+‎                    if child.Name == gunName then return true end
+‎                end
+‎                if child:FindFirstChild("GunData") or child:FindFirstChild("GunSystem") then
+‎                    return true
+‎                end
+‎            end
+‎        end
+‎    end
+‎    return false
+‎end
+‎
+‎local function updateESP()
+‎    for _, other in ipairs(Players:GetPlayers()) do
+‎        if other == player then continue end
+‎        local char = other.Character
+‎        if not char then
+‎            local box = espBoxes[other]
+‎            if box then box.Visible = false end
+‎            continue
+‎        end
+‎        local root = char:FindFirstChild("HumanoidRootPart")
+‎        if not root then
+‎            local box = espBoxes[other]
+‎            if box then box.Visible = false end
+‎            continue
+‎        end
+‎        local armed = hasGun(other)
+‎        local box = espBoxes[other]
+‎        if not box then
+‎            box = Instance.new("BoxHandleAdornment")
+‎            box.Size = Vector3.new(3, 5, 1.5)
+‎            box.Transparency = 0.3
+‎            box.Adornee = root
+‎            box.ZIndex = 5
+‎            box.AlwaysOnTop = true
+‎            box.Parent = gui
+‎            espBoxes[other] = box
+‎        end
+‎        box.Adornee = root
+‎        if espActive then
+‎            box.Visible = true
+‎            if armed then
+‎                box.Color3 = Color3.new(1, 0, 0)
+‎            else
+‎                box.Color3 = Color3.new(0, 1, 0)
+‎            end
+‎        else
+‎            box.Visible = false
+‎        end
+‎    end
+‎    for plrKey, box in pairs(espBoxes) do
+‎        if not plrKey.Parent then
+‎            box:Destroy()
+‎            espBoxes[plrKey] = nil
+‎        end
+‎    end
+‎end
+‎
+‎local function shooterAimbot()
+‎    local char = player.Character
+‎    if not char then return end
+‎    local root = char:FindFirstChild("HumanoidRootPart")
+‎    if not root then return end
+‎    local camera = workspace.CurrentCamera
+‎    local cameraPos = camera.CFrame.Position
+‎    local target = nil
+‎    local closest = math.huge
+‎    for _, other in ipairs(Players:GetPlayers()) do
+‎        if other == player then continue end
+‎        if not other.Character then continue end
+‎        if not hasGun(other) then continue end
+‎        local targetRoot = other.Character:FindFirstChild("HumanoidRootPart")
+‎        if not targetRoot then continue end
+‎        local dist = (targetRoot.Position - root.Position).Magnitude
+‎        if dist < closest then
+‎            closest = dist
+‎            target = targetRoot
+‎        end
+‎    end
+‎    if not target then return end
+‎    local targetPos = target.Position
+‎    local head = target.Parent:FindFirstChild("Head")
+‎    if head then targetPos = head.Position end
+‎    camera.CFrame = CFrame.new(cameraPos, targetPos)
+‎end
+‎
+‎aimbotBtn.MouseButton1Click:Connect(function()
+‎    aimbotActive = not aimbotActive
+‎    if aimbotActive then
+‎        aimbotBtn.Text = "Aimbot: ON"
+‎        aimbotBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
+‎    else
+‎        aimbotBtn.Text = "Aimbot: OFF"
+‎        aimbotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+‎    end
+‎end)
+‎
+‎espBtn.MouseButton1Click:Connect(function()
+‎    espActive = not espActive
+‎    if espActive then
+‎        espBtn.Text = "ESP: ON"
+‎        espBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 30)
+‎    else
+‎        espBtn.Text = "ESP: OFF"
+‎        espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+‎    end
+‎end)
+‎
+‎task.spawn(function()
+‎    while gui.Parent do
+‎        local code = getVaultCode()
+‎        codeLabel.Text = "Code: " .. code
+‎        local map = workspace:FindFirstChild("Map")
+‎        local currentMap = map and map:FindFirstChild("CurrentMap")
+‎        if currentMap then
+‎            debugLabel.Text = "Map: " .. currentMap.Name
+‎        else
+‎            debugLabel.Text = "Map: none"
+‎        end
+‎        if aimbotActive then
+‎            pcall(shooterAimbot)
+‎        end
+‎        pcall(updateESP)
+‎        wait(0.05)
+‎    end
+‎end)
